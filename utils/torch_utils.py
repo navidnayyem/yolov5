@@ -14,6 +14,9 @@ import torch.nn.functional as F
 import torchvision
 
 logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
 
 
 @contextmanager

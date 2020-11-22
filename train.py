@@ -33,6 +33,9 @@ from utils.plots import plot_images, plot_labels, plot_results, plot_evolution
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first
 
 logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
 
 # try:
 #     import wandb

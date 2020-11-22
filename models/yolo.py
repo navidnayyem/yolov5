@@ -7,6 +7,9 @@ from pathlib import Path
 
 sys.path.append('./')  # to run '$ python *.py' files in subdirectories
 logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
 
 import torch
 import torch.nn as nn
