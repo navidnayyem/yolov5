@@ -14,8 +14,37 @@ from utils.general import check_img_size, non_max_suppression, apply_classifier,
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 
+def submit_dhakaAI(results, submission_name, real_image_size=1024):
+    xyxy = np.array(results['xyxy'], dtype=np.int64)
+    hw = np.array(results['hw'], dtype=np.int64)
+    # scaling
+    xyxy[:, :3:2] = (xyxy[:, :3:2]/hw[:,1:])*real_image_size    #xmin xmax / width
+    xyxy[:, 1::2] = (xyxy[:, 1::2]/hw[:,:1])*real_image_size    #ymin ymax / height
+    hw[:,:] = real_image_size
 
+    submission = {
+        'image_id':results['image_id'], 'class':results['class'], 'score':results['score'],
+        'xmin':xyxy[:,0], 'ymin':xyxy[:,1], 'xmax':xyxy[:,2], 'ymax':xyxy[:,3],
+        'width':hw[:,1], 'height':hw[:, 0]
+    }
+
+    df = pd.DataFrame(submission)
+    df.to_csv(f'{submission_name}.csv', index=False)
+    print(f'Saved {submission_name}.csv')
+    
+    
 def detect(save_img=False):
+    
+    # saving dhakaai submission format
+    if opt.dhakaai_format:
+        results = {
+            'image_id': [],
+            'score': [],
+            'class': [],
+            'xyxy':[],
+            'hw':[],
+        }
+        
     source, weights, view_img, save_txt, imgsz = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://'))
@@ -100,6 +129,15 @@ def detect(save_img=False):
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    if opt.dhakaai_format:
+                        conf_score = '%.2f' % (conf)
+                        label_with_cls = '%s' % (names[int(cls)])
+                        results['image_id'].append(Path(p).name)
+                        results['score'].append(conf_score)
+                        results['class'].append(label_with_cls)
+                        results['xyxy'].append(xyxy)
+                        results['hw'].append((im0.shape[0], im0.shape[1]))
+                        
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
@@ -140,6 +178,8 @@ def detect(save_img=False):
         print('Results saved to %s' % save_dir)
 
     print('Done. (%.3fs)' % (time.time() - t0))
+    if opt.dhakaai_format:
+        submit_dhakaAI(results, 'submission')
 
 
 if __name__ == '__main__':
@@ -157,6 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     parser.add_argument('--update', action='store_true', help='update all models')
+    parser.add_argument('--dhakaai-format', action='store_true', help='save results in dhakaai submission format')    
     parser.add_argument('--project', default='runs/detect', help='save results to project/name')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
